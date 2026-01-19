@@ -63,10 +63,10 @@
 
 ## 💼 나의 담당 기능
 
-### 1. 관리자 서버 설계
-- **관리자 서버 구축:** Public/Private Subnet 분리하여 관리자 서버 보호
-- **서버 물리적 분리:** `User API Server`와 `Admin Server`를 분리하여 트래픽 간섭 제거
-- **Air-gap 배포:** 외부 망이 차단된 Private 서버에 배포하기 위한 파이프라인 구축
+### 1. 관리자 서버 인프라 구축
+- **관리자 서버 격리:** VPC 환경의 **Private Subnet에 관리자 서버를 배치**하여 외부 직접 접근 차단 및 보안 강화
+- **서버 물리적 분리:** `User API Server`와 `Admin Server`를 분리 운영하여 사용자 트래픽 간섭 제거
+- **Air-gap 배포:** 외부 망이 차단된 Private 서버에 배포하기 위해 Public Server를 경유하는 파이프라인 구축
 
 ### 2. 🤖 AI 리포트 로직 구현 (Backend)
 - **Gemini API 연동:** `RestTemplate`을 활용한 프롬프트 엔지니어링 및 응답 처리
