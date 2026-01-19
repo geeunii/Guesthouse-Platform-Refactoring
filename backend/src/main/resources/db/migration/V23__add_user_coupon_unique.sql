@@ -1,0 +1,2 @@
+ALTER TABLE user_coupon
+    ADD CONSTRAINT UQ_USER_COUPON_USER_COUPON UNIQUE (user_id, coupon_id);

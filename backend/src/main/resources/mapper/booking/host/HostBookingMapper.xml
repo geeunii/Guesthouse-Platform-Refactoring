@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.booking.host.repository.mybatis.HostBookingMapper">
+
+    <sql id="hostBookingSelect">
+        SELECT
+            r.reservation_id AS reservationId,
+            r.reserver_name AS reserverName,
+            r.reserver_phone AS reserverPhone,
+            a.accommodations_name AS accommodationName,
+            r.checkin AS checkin,
+            r.checkout AS checkout,
+            r.guest_count AS guestCount,
+            r.stay_nights AS stayNights,
+            r.final_payment_amount AS finalPaymentAmount,
+            r.reservation_status AS reservationStatus,
+            r.payment_status AS paymentStatus,
+            pr.refund_status AS refundStatus,
+            r.created_at AS createdAt
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p ON p.reservation_id = r.reservation_id
+        LEFT JOIN (
+            SELECT pr.payment_id, pr.refund_status
+            FROM payment_refund pr
+            JOIN (
+                SELECT payment_id, MAX(refund_id) AS max_refund_id
+                FROM payment_refund
+                GROUP BY payment_id
+            ) latest ON latest.payment_id = pr.payment_id AND latest.max_refund_id = pr.refund_id
+        ) pr ON pr.payment_id = p.payment_id
+    </sql>
+
+    <sql id="hostBookingWhere">
+        WHERE a.user_id = #{hostUserId}
+        <if test="upcomingOnly">
+            AND r.checkin &gt;= #{start}
+        </if>
+        <if test="!upcomingOnly and start != null and end != null">
+            <choose>
+                <when test="rangeMode == 'START'">
+                    AND r.checkin &gt;= #{start}
+                    AND r.checkin &lt; #{end}
+                </when>
+                <otherwise>
+                    AND r.checkin &lt; #{end}
+                    AND r.checkout &gt;= #{start}
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+
+    <sql id="hostBookingOrder">
+        <choose>
+            <when test="sort == 'CREATED_DESC'">
+                ORDER BY r.created_at DESC, r.reservation_id DESC
+            </when>
+            <otherwise>
+                ORDER BY r.checkin ASC, r.checkout ASC, r.reservation_id ASC
+            </otherwise>
+        </choose>
+    </sql>
+
+    <select id="selectHostBookingsPaged"
+            resultType="com.ssg9th2team.geharbang.domain.booking.host.dto.HostBookingResponse">
+        <include refid="hostBookingSelect" />
+        <include refid="hostBookingWhere" />
+        <include refid="hostBookingOrder" />
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="selectHostBookingsAll"
+            resultType="com.ssg9th2team.geharbang.domain.booking.host.dto.HostBookingResponse">
+        <include refid="hostBookingSelect" />
+        <include refid="hostBookingWhere" />
+        <include refid="hostBookingOrder" />
+    </select>
+
+    <select id="selectHostBookingsCursor"
+            resultType="com.ssg9th2team.geharbang.domain.booking.host.dto.HostBookingResponse">
+        <include refid="hostBookingSelect" />
+        <include refid="hostBookingWhere" />
+        <if test="cursorValue != null and cursorId != null">
+            <choose>
+                <when test="sort == 'CREATED_DESC'">
+                    AND (
+                        r.created_at &lt; #{cursorValue}
+                        OR (r.created_at = #{cursorValue} AND r.reservation_id &lt; #{cursorId})
+                    )
+                </when>
+                <otherwise>
+                    AND (
+                        r.checkin &gt; #{cursorValue}
+                        OR (r.checkin = #{cursorValue} AND r.reservation_id &gt; #{cursorId})
+                    )
+                </otherwise>
+            </choose>
+        </if>
+        <include refid="hostBookingOrder" />
+        LIMIT #{size}
+    </select>
+
+    <select id="countHostBookings" resultType="long">
+        SELECT COUNT(*)
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        <include refid="hostBookingWhere" />
+    </select>
+
+    <select id="selectHostBookingById"
+            resultType="com.ssg9th2team.geharbang.domain.booking.host.dto.HostBookingResponse">
+        SELECT
+            r.reservation_id AS reservationId,
+            r.reserver_name AS reserverName,
+            r.reserver_phone AS reserverPhone,
+            a.accommodations_name AS accommodationName,
+            r.checkin AS checkin,
+            r.checkout AS checkout,
+            r.guest_count AS guestCount,
+            r.stay_nights AS stayNights,
+            r.final_payment_amount AS finalPaymentAmount,
+            r.reservation_status AS reservationStatus,
+            r.payment_status AS paymentStatus,
+            pr.refund_status AS refundStatus,
+            r.created_at AS createdAt
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p ON p.reservation_id = r.reservation_id
+        LEFT JOIN (
+            SELECT pr.payment_id, pr.refund_status
+            FROM payment_refund pr
+            JOIN (
+                SELECT payment_id, MAX(refund_id) AS max_refund_id
+                FROM payment_refund
+                GROUP BY payment_id
+            ) latest ON latest.payment_id = pr.payment_id AND latest.max_refund_id = pr.refund_id
+        ) pr ON pr.payment_id = p.payment_id
+        WHERE a.user_id = #{hostUserId}
+          AND r.reservation_id = #{reservationId}
+    </select>
+
+</mapper>

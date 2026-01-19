@@ -1,0 +1,121 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.12'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.github.node-gradle.node' version '7.0.2'
+}
+
+group = 'com.ssg9th2team'
+version = '0.0.1-SNAPSHOT'
+description = '신세계 I&C 최종 프로젝트-게스트하우스 플랫폼'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	implementation 'org.springframework.security:spring-security-messaging'
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
+
+	// Mail
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+	// OAuth2 Client
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
+	// Google Cloud Vision OCR
+	implementation platform('com.google.cloud:libraries-bom:26.32.0')
+	implementation 'com.google.cloud:google-cloud-vision'
+
+	// WebClient for Kakao API
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	
+	// Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'com.h2database:h2'
+
+	// TestContainers (테스트용 Docker MySQL)
+	testImplementation 'org.testcontainers:testcontainers:1.19.3'
+	testImplementation 'org.testcontainers:mysql:1.19.3'
+	testImplementation 'org.testcontainers:junit-jupiter:1.19.3'
+
+	// Flyway
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-mysql'
+	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// 검색 엔진 추가
+	// implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+	// 롬복
+	compileOnly 'org.projectlombok:lombok:1.18.30'
+	annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
+	// AWS S3 SDK (네이버 클라우드 Object Storage 호환)
+	implementation 'software.amazon.awssdk:s3:2.21.0'
+
+	// Redis Cache
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
+	implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+
+	// Redisson - Redis 분산 락
+	implementation 'org.redisson:redisson-spring-boot-starter:3.27.0'
+
+	// OWASP HTML Sanitizer (XSS 방지)
+	implementation 'com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+/**
+ * Frontend Build Integration
+ */
+node {
+	download = true
+	version = '22.12.0'
+	distBaseUrl = 'https://nodejs.org/dist'
+	npmInstallCommand = "install"
+	workDir = file("../frontend")
+	npmWorkDir = file("../frontend")
+	nodeProjectDir = file("../frontend")
+}
+
+task npmBuild(type: NpmTask) {
+	dependsOn npmInstall
+	args = ["run", "build"]
+}
+
+processResources.dependsOn npmBuild

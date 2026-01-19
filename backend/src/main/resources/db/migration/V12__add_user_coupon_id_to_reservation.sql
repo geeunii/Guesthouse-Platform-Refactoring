@@ -1,0 +1,4 @@
+-- reservation 테이블에 user_coupon_id 컬럼 추가
+-- ALTER TABLE reservation ADD COLUMN user_coupon_id BIGINT UNSIGNED NULL;
+-- ALTER TABLE reservation ADD CONSTRAINT FK_RESERVATION_USER_COUPON
+--    FOREIGN KEY (user_coupon_id) REFERENCES user_coupon(id);

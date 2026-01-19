@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssg9th2team.geharbang.domain.recommendation.repository.RecommendationMapper">
+
+    <!-- 사용자 선호 테마 ID 조회 -->
+    <select id="findUserThemeIds" resultType="java.lang.Long">
+        SELECT theme_id FROM user_theme WHERE user_id = #{userId}
+    </select>
+
+    <!-- 사용자가 높은 평점 준 리뷰의 태그 ID 조회 -->
+    <select id="findPreferredTagIds" resultType="java.lang.Long">
+        SELECT DISTINCT rtm.review_tag_id
+        FROM review r
+        JOIN review_tag_map rtm ON r.review_id = rtm.review_id
+        WHERE r.user_id = #{userId} AND r.rating >= 4
+    </select>
+
+    <!-- 테마 매칭 기반 숙소 조회 -->
+    <select id="findByThemeMatch" resultType="com.ssg9th2team.geharbang.domain.recommendation.dto.AccommodationScoreDto">
+        SELECT 
+            a.accommodations_id as accommodationId,
+            a.accommodations_name as accommodationName,
+            a.short_description as shortDescription,
+            a.city,
+            a.district,
+            (SELECT ai.image_url FROM accommodation_image ai WHERE ai.accommodations_id = a.accommodations_id LIMIT 1) as imageUrl,
+            a.rating,
+            a.min_price as minPrice,
+            COUNT(DISTINCT at.theme_id) as themeMatchCount,
+            0 as tagMatchCount,
+            (SELECT COUNT(*) FROM review r WHERE r.accommodations_id = a.accommodations_id) as reviewCount,
+            (SELECT COUNT(*) FROM accommodation_theme ate WHERE ate.accommodations_id = a.accommodations_id) as totalThemeCount
+        FROM accommodation a
+        JOIN accommodation_theme at ON a.accommodations_id = at.accommodations_id
+        WHERE a.approval_status = 'APPROVED'
+          AND a.accommodation_status = 1
+          <if test="themeIds != null and themeIds.size() > 0">
+            AND at.theme_id IN
+            <foreach collection="themeIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+          </if>
+          <if test="excludeIds != null and excludeIds.size() > 0">
+            AND a.accommodations_id NOT IN
+            <foreach collection="excludeIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+          </if>
+        GROUP BY a.accommodations_id
+        ORDER BY themeMatchCount DESC, a.rating DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 태그 매칭 기반 숙소 조회 -->
+    <select id="findByTagMatch" resultType="com.ssg9th2team.geharbang.domain.recommendation.dto.AccommodationScoreDto">
+        SELECT 
+            a.accommodations_id as accommodationId,
+            a.accommodations_name as accommodationName,
+            a.short_description as shortDescription,
+            a.city,
+            a.district,
+            (SELECT ai.image_url FROM accommodation_image ai WHERE ai.accommodations_id = a.accommodations_id LIMIT 1) as imageUrl,
+            a.rating,
+            a.min_price as minPrice,
+            0 as themeMatchCount,
+            COUNT(DISTINCT rtm.review_tag_id) as tagMatchCount,
+            (SELECT COUNT(*) FROM review r WHERE r.accommodations_id = a.accommodations_id) as reviewCount,
+            0 as totalThemeCount
+        FROM accommodation a
+        JOIN review r ON a.accommodations_id = r.accommodations_id
+        JOIN review_tag_map rtm ON r.review_id = rtm.review_id
+        WHERE a.approval_status = 'APPROVED'
+          AND a.accommodation_status = 1
+          <if test="tagIds != null and tagIds.size() > 0">
+            AND rtm.review_tag_id IN
+            <foreach collection="tagIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+          </if>
+          <if test="excludeIds != null and excludeIds.size() > 0">
+            AND a.accommodations_id NOT IN
+            <foreach collection="excludeIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+          </if>
+        GROUP BY a.accommodations_id
+        ORDER BY tagMatchCount DESC, a.rating DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 사용자가 예약한 숙소 ID 조회 -->
+    <select id="findReservedAccommodationIds" resultType="java.lang.Long">
+        SELECT DISTINCT accommodations_id FROM reservation WHERE user_id = #{userId}
+    </select>
+
+    <!-- 숙소의 테마명 조회 -->
+    <select id="findThemeNamesByAccommodationId" resultType="java.lang.String">
+        SELECT t.theme_name
+        FROM accommodation_theme at
+        JOIN theme t ON at.theme_id = t.theme_id
+        WHERE at.accommodations_id = #{accommodationId}
+        LIMIT 3
+    </select>
+
+    <!-- 숙소의 인기 태그 조회 -->
+    <select id="findTopTagNamesByAccommodationId" resultType="java.lang.String">
+        SELECT rt.review_tag_name
+        FROM review r
+        JOIN review_tag_map rtm ON r.review_id = rtm.review_id
+        JOIN review_tag rt ON rtm.review_tag_id = rt.review_tag_id
+        WHERE r.accommodations_id = #{accommodationId}
+        GROUP BY rt.review_tag_id
+        ORDER BY COUNT(*) DESC
+        LIMIT 3
+    </select>
+
+    <!-- [Fallback] 인기 숙소 추천 (신규 사용자용) -->
+    <!-- 예약 수 + 평점 기반 정렬 -->
+    <select id="findPopularAccommodations" resultType="com.ssg9th2team.geharbang.domain.recommendation.dto.AccommodationScoreDto">
+        SELECT 
+            a.accommodations_id as accommodationId,
+            a.accommodations_name as accommodationName,
+            a.short_description as shortDescription,
+            a.city,
+            a.district,
+            (SELECT ai.image_url FROM accommodation_image ai WHERE ai.accommodations_id = a.accommodations_id LIMIT 1) as imageUrl,
+            a.rating,
+            a.min_price as minPrice,
+            0 as themeMatchCount,
+            0 as tagMatchCount,
+            (SELECT COUNT(*) FROM review r WHERE r.accommodations_id = a.accommodations_id) as reviewCount,
+            (SELECT COUNT(*) FROM accommodation_theme ate WHERE ate.accommodations_id = a.accommodations_id) as totalThemeCount,
+            (SELECT COUNT(*) FROM reservation res WHERE res.accommodations_id = a.accommodations_id AND res.reservation_status = 2) as reservationCount
+        FROM accommodation a
+        WHERE a.approval_status = 'APPROVED'
+          AND a.accommodation_status = 1
+          <if test="excludeIds != null and excludeIds.size() > 0">
+            AND a.accommodations_id NOT IN
+            <foreach collection="excludeIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+          </if>
+        ORDER BY 
+            reservationCount DESC,
+            a.rating DESC,
+            a.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.report.host.repository.mybatis.HostReportMapper">
+
+    <select id="selectHostAccommodationId" resultType="long">
+        SELECT a.accommodations_id
+        FROM accommodation a
+        WHERE a.user_id = #{hostId}
+          AND a.accommodations_id = #{accommodationId}
+        LIMIT 1
+    </select>
+
+    <select id="selectReviewSummary"
+            resultType="com.ssg9th2team.geharbang.domain.report.host.dto.HostReviewReportSummaryResponse">
+        SELECT
+            ROUND(IFNULL(AVG(r.rating), 0), 1) AS avgRating,
+            COUNT(*) AS reviewCount
+        FROM review r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        WHERE a.user_id = #{hostId}
+          AND r.is_deleted = 0
+          AND r.created_at &gt;= #{start}
+          AND r.created_at &lt; #{end}
+          <if test="accommodationId != null">
+            AND r.accommodations_id = #{accommodationId}
+          </if>
+    </select>
+
+    <select id="selectReviewRatingDistribution"
+            resultType="com.ssg9th2team.geharbang.domain.report.host.dto.HostReviewReportRatingRow">
+        SELECT
+            r.rating AS rating,
+            COUNT(*) AS count
+        FROM review r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        WHERE a.user_id = #{hostId}
+          AND r.is_deleted = 0
+          AND r.rating IS NOT NULL
+          AND r.created_at &gt;= #{start}
+          AND r.created_at &lt; #{end}
+          <if test="accommodationId != null">
+            AND r.accommodations_id = #{accommodationId}
+          </if>
+        GROUP BY r.rating
+        ORDER BY r.rating
+    </select>
+
+    <select id="selectTopReviewTags"
+            resultType="com.ssg9th2team.geharbang.domain.report.host.dto.HostReviewReportTagRow">
+        SELECT
+            rt.review_tag_name AS tagName,
+            COUNT(*) AS count
+        FROM review_tag_map rtm
+        JOIN review r ON r.review_id = rtm.review_id
+        JOIN review_tag rt ON rt.review_tag_id = rtm.review_tag_id
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        WHERE a.user_id = #{hostId}
+          AND r.is_deleted = 0
+          AND rt.is_active = 1
+          AND r.created_at &gt;= #{start}
+          AND r.created_at &lt; #{end}
+          <if test="accommodationId != null">
+            AND r.accommodations_id = #{accommodationId}
+          </if>
+        GROUP BY rt.review_tag_id, rt.review_tag_name
+        ORDER BY count DESC, rt.review_tag_id ASC
+        LIMIT 10
+    </select>
+
+    <select id="selectRecentReviews"
+            resultType="com.ssg9th2team.geharbang.domain.report.host.dto.HostReviewReportRecentRow">
+        SELECT
+            r.review_id AS reviewId,
+            r.accommodations_id AS accommodationId,
+            a.accommodations_name AS accommodationName,
+            r.rating,
+            r.content,
+            COALESCE(r.author_name, u.nickname, u.name, u.email) AS authorName,
+            r.visit_date AS visitDate,
+            r.created_at AS createdAt,
+            r.is_crawled AS isCrawled
+        FROM review r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN users u ON u.user_id = r.user_id
+        WHERE a.user_id = #{hostId}
+          AND r.is_deleted = 0
+          AND r.created_at &gt;= #{start}
+          AND r.created_at &lt; #{end}
+          <if test="accommodationId != null">
+            AND r.accommodations_id = #{accommodationId}
+          </if>
+        ORDER BY r.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectReviewTrend"
+            resultType="com.ssg9th2team.geharbang.domain.report.host.dto.HostReviewReportTrendRow">
+        SELECT
+            DATE_FORMAT(r.created_at, '%Y-%m') AS period,
+            COUNT(*) AS reviewCount,
+            ROUND(IFNULL(AVG(r.rating), 0), 1) AS avgRating
+        FROM review r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        WHERE a.user_id = #{hostId}
+          AND r.is_deleted = 0
+          AND r.created_at &gt;= #{start}
+          AND r.created_at &lt; #{end}
+          <if test="accommodationId != null">
+            AND r.accommodations_id = #{accommodationId}
+          </if>
+        GROUP BY DATE_FORMAT(r.created_at, '%Y-%m')
+        ORDER BY period
+    </select>
+
+    <select id="selectThemePopularity"
+            resultType="com.ssg9th2team.geharbang.domain.report.host.dto.HostThemeReportRow">
+        SELECT
+            t.theme_id AS themeId,
+            t.theme_name AS themeName,
+            COALESCE(COUNT(DISTINCT r.reservation_id), 0) AS reservationCount,
+            COALESCE(SUM(CASE
+                WHEN (r.payment_status = 1 OR p.payment_status = 1) THEN COALESCE(p.approved_amount, r.final_payment_amount)
+                ELSE 0
+            END), 0) AS revenueSum,
+            COALESCE(COUNT(DISTINCT a.accommodations_id), 0) AS accommodationCount
+        FROM accommodation a
+        JOIN accommodation_theme at ON at.accommodations_id = a.accommodations_id
+        JOIN theme t ON t.theme_id = at.theme_id
+        LEFT JOIN reservation r
+            ON r.accommodations_id = a.accommodations_id
+            AND r.reservation_status IN (2, 3)
+            AND r.checkout &gt;= #{start}
+            AND r.checkout &lt; #{end}
+        LEFT JOIN payment p
+            ON p.reservation_id = r.reservation_id
+            AND p.payment_status = 1
+        WHERE a.user_id = #{hostId}
+          <if test="accommodationId != null">
+            AND a.accommodations_id = #{accommodationId}
+          </if>
+        GROUP BY t.theme_id, t.theme_name
+        <choose>
+            <when test="metric == 'revenue'">
+                ORDER BY revenueSum DESC, t.theme_id ASC
+            </when>
+            <otherwise>
+                ORDER BY reservationCount DESC, t.theme_id ASC
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="selectDemandDaily"
+            resultType="com.ssg9th2team.geharbang.domain.report.host.dto.HostDemandDailyRow">
+        SELECT
+            DATE(r.checkin) AS statDate,
+            COALESCE(COUNT(DISTINCT r.reservation_id), 0) AS reservationCount,
+            COALESCE(SUM(CASE
+                WHEN (r.payment_status = 1 OR p.payment_status = 1) THEN COALESCE(p.approved_amount, r.final_payment_amount)
+                ELSE 0
+            END), 0) AS revenue
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p
+            ON p.reservation_id = r.reservation_id
+            AND p.payment_status = 1
+        WHERE a.user_id = #{hostId}
+          AND r.reservation_status IN (2, 3)
+          AND r.checkin &gt;= #{start}
+          AND r.checkin &lt; #{end}
+          <if test="accommodationId != null">
+            AND r.accommodations_id = #{accommodationId}
+          </if>
+        GROUP BY DATE(r.checkin)
+        ORDER BY statDate
+    </select>
+
+</mapper>

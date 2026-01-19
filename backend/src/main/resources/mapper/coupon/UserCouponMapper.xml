@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.coupon.repository.mybatis.UserCouponMapper">
+
+
+    <!-- 상태별 쿠폰 조회 -->
+    <select id="selectMyCouponsByStatus" resultType="com.ssg9th2team.geharbang.domain.coupon.dto.UserCouponResponseDto">
+        SELECT      uc.id,
+                    uc.status,
+                    uc.issued_at,
+                    uc.used_at,
+                    uc.expired_at,
+                    c.coupon_id,
+                    c.code,
+                    c.name,
+                    c.discount_type,
+                    c.discount_value,
+                    c.min_price,
+                    c.max_discount,
+                    c.accommodations_id as accommodationsId
+        FROM coupon c
+        join user_coupon uc on c.coupon_id = uc.coupon_id
+
+        <where>
+            uc.user_id = #{userId}
+            <choose>
+                <when test="status == 'ALL'">
+                    <!-- status 조건 없이 모든 쿠폰 조회 -->
+                </when>
+                <when test="status == 'ISSUED'">
+                    AND uc.status = 'ISSUED' AND uc.expired_at > NOW()
+                </when>
+                <when test="status == 'EXPIRED'">
+                    AND (uc.status = 'EXPIRED' OR (uc.status = 'ISSUED' AND uc.expired_at &lt;= NOW()))
+                </when>
+                <otherwise>
+                    AND uc.status = #{status}
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+</mapper>

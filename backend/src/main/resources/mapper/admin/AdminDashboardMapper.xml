@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.admin.repository.mybatis.AdminDashboardMapper">
+    <select id="selectPendingAccommodations" resultType="com.ssg9th2team.geharbang.domain.admin.dto.AdminAccommodationSummary">
+        SELECT
+            a.accommodations_id AS accommodationsId,
+            a.user_id AS hostUserId,
+            a.accommodations_name AS name,
+            a.accommodations_category AS category,
+            a.city AS city,
+            a.district AS district,
+            a.approval_status AS approvalStatus,
+            a.rejection_reason AS rejectionReason,
+            a.created_at AS createdAt,
+            a.rating AS avgRating,
+            a.review_count AS reviewCount,
+            COUNT(r.room_id) AS roomCount,
+            MIN(r.price) AS minPrice,
+            u.phone AS hostPhone,
+            0 AS reservationCount,
+            0.0 AS occupancyRate,
+            0.0 AS cancellationRate,
+            0 AS totalRevenue
+        FROM accommodation a
+        LEFT JOIN room r ON r.accommodations_id = a.accommodations_id
+        LEFT JOIN users u ON u.user_id = a.user_id
+        WHERE a.approval_status = 'PENDING'
+        GROUP BY a.accommodations_id
+        ORDER BY a.created_at DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.revenue.host.repository.mybatis.HostRevenueMapper">
+
+    <!-- 월 매출 요약: 체크아웃 기준 + 확정 예약 -->
+    <select id="selectMonthlyRevenueSummary"
+            resultType="com.ssg9th2team.geharbang.domain.revenue.host.entity.HostRevenueSummaryRow">
+        SELECT
+            COALESCE(SUM(COALESCE(p.approved_amount, r.final_payment_amount)), 0) AS totalRevenue,
+            COALESCE(COUNT(DISTINCT r.reservation_id), 0) AS reservationCount
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p
+            ON p.reservation_id = r.reservation_id
+            AND p.payment_status = 1
+        WHERE a.user_id = #{hostId}
+          AND a.approval_status = 'APPROVED'
+          AND r.reservation_status IN (2, 3)
+          AND (r.payment_status = 1 OR p.payment_status = 1)
+          AND r.checkout &gt;= #{start}
+          AND r.checkout &lt; #{end}
+    </select>
+
+    <!-- 다음 달 예상 매출: 체크아웃 기준 + 확정 예약 -->
+    <select id="selectExpectedNextMonthRevenue"
+            resultType="java.lang.Long">
+        SELECT
+            COALESCE(SUM(COALESCE(p.approved_amount, r.final_payment_amount)), 0)
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p
+            ON p.reservation_id = r.reservation_id
+            AND p.payment_status = 1
+        WHERE a.user_id = #{hostId}
+          AND a.approval_status = 'APPROVED'
+          AND r.reservation_status IN (2, 3)
+          AND (r.payment_status = 1 OR p.payment_status = 1)
+          AND r.checkout &gt;= #{start}
+          AND r.checkout &lt; #{end}
+    </select>
+
+    <!-- 월별 추이: host_daily_stats에서 월 단위 합산 -->
+    <select id="selectRevenueTrend"
+            resultType="com.ssg9th2team.geharbang.domain.revenue.host.dto.HostRevenueTrendResponse">
+        SELECT
+            MONTH(h.stat_date) AS month,
+            COALESCE(SUM(h.revenue), 0) AS revenue,
+            COALESCE(SUM(h.reservation_count), 0) AS reservationCount,
+            COALESCE(AVG(h.occupancy_rate), 0) AS occupancyRate
+        FROM host_daily_stats h
+        WHERE h.user_id = #{hostId}
+          AND h.stat_date &gt;= #{start}
+          AND h.stat_date &lt; #{end}
+        GROUP BY MONTH(h.stat_date)
+        ORDER BY MONTH(h.stat_date)
+    </select>
+
+    <!-- 월별 추이: reservation 기반 fallback -->
+    <select id="selectRevenueTrendFromReservations"
+            resultType="com.ssg9th2team.geharbang.domain.revenue.host.dto.HostRevenueTrendResponse">
+        SELECT
+            MONTH(r.checkout) AS month,
+            COALESCE(SUM(COALESCE(p.approved_amount, r.final_payment_amount)), 0) AS revenue,
+            COALESCE(COUNT(DISTINCT r.reservation_id), 0) AS reservationCount,
+            0.0 AS occupancyRate
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p
+            ON p.reservation_id = r.reservation_id
+            AND p.payment_status = 1
+        WHERE a.user_id = #{hostId}
+          AND a.approval_status = 'APPROVED'
+          AND r.reservation_status IN (2, 3)
+          AND (r.payment_status = 1 OR p.payment_status = 1)
+          AND r.checkout &gt;= #{start}
+          AND r.checkout &lt; #{end}
+        GROUP BY MONTH(r.checkout)
+        ORDER BY MONTH(r.checkout)
+    </select>
+
+    <!-- 기간 상세: 월 단위 집계 (YYYY-MM) -->
+    <select id="selectRevenueDetails"
+            resultType="com.ssg9th2team.geharbang.domain.revenue.host.dto.HostRevenueDetailResponse">
+        SELECT
+            DATE_FORMAT(h.stat_date, '%Y-%m') AS period,
+            COALESCE(SUM(h.revenue), 0) AS revenue,
+            COALESCE(AVG(h.occupancy_rate), 0) AS occupancyRate
+        FROM host_daily_stats h
+        WHERE h.user_id = #{hostId}
+          AND h.stat_date &gt;= #{start}
+          AND h.stat_date &lt; #{end}
+        GROUP BY DATE_FORMAT(h.stat_date, '%Y-%m')
+        ORDER BY period
+    </select>
+
+    <!-- 기간 상세: reservation 기반 fallback (월 단위) -->
+    <select id="selectRevenueDetailsFromReservations"
+            resultType="com.ssg9th2team.geharbang.domain.revenue.host.dto.HostRevenueDetailResponse">
+        SELECT
+            DATE_FORMAT(r.checkout, '%Y-%m') AS period,
+            COALESCE(SUM(COALESCE(p.approved_amount, r.final_payment_amount)), 0) AS revenue,
+            0.0 AS occupancyRate
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p
+            ON p.reservation_id = r.reservation_id
+            AND p.payment_status = 1
+        WHERE a.user_id = #{hostId}
+          AND a.approval_status = 'APPROVED'
+          AND r.reservation_status IN (2, 3)
+          AND (r.payment_status = 1 OR p.payment_status = 1)
+          AND r.checkout &gt;= #{start}
+          AND r.checkout &lt; #{end}
+        GROUP BY DATE_FORMAT(r.checkout, '%Y-%m')
+        ORDER BY period
+    </select>
+
+    <!-- 기간 상세: 일 단위 집계 (YYYY-MM-DD) -->
+    <select id="selectRevenueDailyDetails"
+            resultType="com.ssg9th2team.geharbang.domain.revenue.host.dto.HostRevenueDetailResponse">
+        SELECT
+            DATE_FORMAT(h.stat_date, '%Y-%m-%d') AS period,
+            COALESCE(SUM(h.revenue), 0) AS revenue,
+            COALESCE(AVG(h.occupancy_rate), 0) AS occupancyRate
+        FROM host_daily_stats h
+        WHERE h.user_id = #{hostId}
+          AND h.stat_date &gt;= #{start}
+          AND h.stat_date &lt; #{end}
+        GROUP BY DATE_FORMAT(h.stat_date, '%Y-%m-%d')
+        ORDER BY period
+    </select>
+
+    <!-- 기간 상세: reservation 기반 fallback (일 단위) -->
+    <select id="selectRevenueDailyDetailsFromReservations"
+            resultType="com.ssg9th2team.geharbang.domain.revenue.host.dto.HostRevenueDetailResponse">
+        SELECT
+            DATE_FORMAT(r.checkout, '%Y-%m-%d') AS period,
+            COALESCE(SUM(COALESCE(p.approved_amount, r.final_payment_amount)), 0) AS revenue,
+            0.0 AS occupancyRate
+        FROM reservation r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        LEFT JOIN payment p
+            ON p.reservation_id = r.reservation_id
+            AND p.payment_status = 1
+        WHERE a.user_id = #{hostId}
+          AND a.approval_status = 'APPROVED'
+          AND r.reservation_status IN (2, 3)
+          AND (r.payment_status = 1 OR p.payment_status = 1)
+          AND r.checkout &gt;= #{start}
+          AND r.checkout &lt; #{end}
+        GROUP BY DATE_FORMAT(r.checkout, '%Y-%m-%d')
+        ORDER BY period
+    </select>
+
+</mapper>

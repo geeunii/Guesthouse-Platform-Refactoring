@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.review.repository.mybatis.ReviewMapper">
+
+    <resultMap id="ReviewResponseMap" type="com.ssg9th2team.geharbang.domain.review.dto.ReviewResponseDto" autoMapping="true">
+        <id property="reviewId" column="reviewId"/>
+        <collection property="images" column="reviewId" select="selectReviewImagesByReviewId"/>
+        <collection property="tags" column="reviewId" select="selectReviewTagsByReviewId"/>
+    </resultMap>
+
+
+    <!--특정 숙소에 달린 ‘모든 리뷰 목록’을 조회 -->
+    <select id="selectReviewsByAccommodationId" resultMap="ReviewResponseMap">
+        SELECT
+            r.review_id AS reviewId,
+            r.accommodations_id AS accommodationsId,
+            r.user_id AS userId,
+            r.author_name AS authorName,
+            r.rating,
+            r.content,
+            r.created_at AS createdAt,
+            a.accommodations_name AS accommodationName,
+            rr.content AS replyContent,
+            COALESCE(rr.updated_at, rr.created_at) AS replyUpdatedAt
+        FROM review r
+        LEFT JOIN accommodation a ON r.accommodations_id = a.accommodations_id
+        LEFT JOIN review_replies rr ON rr.review_id = r.review_id
+        WHERE r.accommodations_id = #{accommodationsId}
+          AND r.is_deleted = 0
+        ORDER BY r.created_at DESC
+    </select>
+
+
+
+    <!-- [User] 내가 작성한 리뷰 조회 -->
+    <select id="selectReviewsByUserId" resultMap="ReviewResponseMap">
+        SELECT
+            r.review_id AS reviewId,
+            r.accommodations_id AS accommodationsId,
+            r.user_id AS userId,
+            r.author_name AS authorName,
+            r.rating,
+            r.content,
+            r.visit_date AS visitDate,
+            r.created_at AS createdAt,
+            a.accommodations_name AS accommodationName,
+            (SELECT image_url FROM accommodation_image ai WHERE ai.accommodations_id = r.accommodations_id ORDER BY ai.sort_order LIMIT 1) AS accommodationImage,
+            (SELECT checkin FROM reservation res WHERE res.user_id = r.user_id AND res.accommodations_id = r.accommodations_id AND res.reservation_status = 2 AND res.checkout &lt;= r.created_at ORDER BY res.checkout DESC LIMIT 1) AS checkin,
+            (SELECT checkout FROM reservation res WHERE res.user_id = r.user_id AND res.accommodations_id = r.accommodations_id AND res.reservation_status = 2 AND res.checkout &lt;= r.created_at ORDER BY res.checkout DESC LIMIT 1) AS checkout
+        FROM review r
+        JOIN accommodation a ON r.accommodations_id = a.accommodations_id
+        WHERE r.user_id = #{userId}
+          AND r.is_deleted = 0
+        ORDER BY r.created_at DESC
+    </select>
+
+
+
+
+    <!-- 이미지 조회 -->
+    <select id="selectReviewImagesByReviewId" resultType="com.ssg9th2team.geharbang.domain.review.dto.ReviewImageDto">
+        SELECT
+            review_image_id AS reviewImageId,
+            review_image_url AS imageUrl,
+            sort_order AS sortOrder
+        FROM review_image
+        WHERE review_id = #{reviewId}
+        ORDER BY sort_order, review_image_id
+    </select>
+
+
+
+    <!-- 태그 조회-->
+    <select id="selectReviewTagsByReviewId" resultType="com.ssg9th2team.geharbang.domain.review.dto.ReviewTagDto">
+        SELECT
+            rt.review_tag_id AS reviewTagId,
+            rt.review_tag_name AS reviewTagName
+        FROM review_tag_map rtm
+        JOIN review_tag rt ON rtm.review_tag_id = rt.review_tag_id
+        WHERE rtm.review_id = #{reviewId}
+          AND rt.is_active = 1
+        ORDER BY rt.review_tag_id
+    </select>
+
+
+    <!-- 리뷰 태그 저장 -->
+    <insert id="insertReviewTags">
+        INSERT INTO review_tag_map (review_id, review_tag_id)
+        VALUES
+        <foreach collection="tagIds" item="tagId" separator=",">
+            (#{reviewId}, #{tagId})
+        </foreach>
+    </insert>
+
+
+
+    <!-- 전체 리뷰 태그 목록 조회 (활성화된 태그만) -->
+    <select id="selectAllReviewTags" resultType="com.ssg9th2team.geharbang.domain.review.dto.ReviewTagDto">
+        SELECT
+            review_tag_id AS reviewTagId,
+            review_tag_name AS reviewTagName
+        FROM review_tag
+        WHERE is_active = 1
+        ORDER BY review_tag_id
+    </select>
+
+    <!-- 리뷰 태그 삭제 -->
+    <delete id="deleteReviewTags">
+        DELETE FROM review_tag_map WHERE review_id = #{reviewId}
+    </delete>
+
+    <!-- 숙소별 상위 3개 태그 조회 -->
+    <select id="selectTop3TagsByAccommodationId" resultType="string">
+        SELECT rt.review_tag_name
+        FROM review_tag_map rtm
+        JOIN review_tag rt ON rtm.review_tag_id = rt.review_tag_id
+        JOIN review r ON rtm.review_id = r.review_id
+        WHERE r.accommodations_id = #{accommodationId}
+          AND r.is_deleted = 0
+        GROUP BY rt.review_tag_id, rt.review_tag_name
+        ORDER BY COUNT(rtm.review_tag_id) DESC
+        LIMIT 3
+    </select>
+
+</mapper>

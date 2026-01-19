@@ -1,0 +1,2 @@
+-- users 테이블에 social_signup_completed 컬럼 추가
+-- ALTER TABLE users ADD COLUMN social_signup_completed BIT DEFAULT 1 NOT NULL;

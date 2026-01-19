@@ -1,0 +1,20 @@
+-- Chatbot Room 테이블
+CREATE TABLE IF NOT EXISTS chatbot_room (
+    chat_room_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    last_message TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT FK_CHATBOT_ROOM_USER FOREIGN KEY (user_id) REFERENCES users(user_id)
+) CHARSET=utf8mb4;
+
+-- Chatbot History 테이블
+CREATE TABLE IF NOT EXISTS chatbot_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    chat_room_id BIGINT NOT NULL,
+    message TEXT NOT NULL,
+    is_bot BOOLEAN NOT NULL,
+    options TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FK_CHATBOT_HISTORY_ROOM FOREIGN KEY (chat_room_id) REFERENCES chatbot_room(chat_room_id)
+) CHARSET=utf8mb4;

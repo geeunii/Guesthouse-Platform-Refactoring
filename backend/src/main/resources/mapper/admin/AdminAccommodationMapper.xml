@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.admin.repository.mybatis.AdminAccommodationMapper">
+    <select id="selectAccommodationMetrics" resultType="com.ssg9th2team.geharbang.domain.admin.dto.AdminAccommodationMetrics">
+        SELECT
+            r.accommodations_id AS accommodationsId,
+            -- reservationCount: 확정(2) + 체크인완료(3)
+            COALESCE(SUM(CASE WHEN r.reservation_status IN (2, 3) THEN 1 ELSE 0 END), 0) AS reservationCount,
+            -- canceledCount: 취소(9) 또는 결제 환불(3)
+            COALESCE(SUM(CASE WHEN r.reservation_status = 9 OR r.payment_status = 3 THEN 1 ELSE 0 END), 0) AS canceledCount,
+            COALESCE(COUNT(*), 0) AS totalCount,
+            COALESCE(SUM(CASE
+                WHEN r.reservation_status IN (2, 3) AND r.payment_status = 1
+                THEN r.final_payment_amount
+                ELSE 0
+            END), 0) AS totalRevenue
+        FROM reservation r
+        WHERE r.accommodations_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        GROUP BY r.accommodations_id
+    </select>
+</mapper>

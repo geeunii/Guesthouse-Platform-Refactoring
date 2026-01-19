@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.wishlist.repository.mybatis.WishlistMapper">
+
+
+
+    <!-- 마이페이지용: 내가 찜한 숙소의 상세 정보를 다 가져옴 (카드 목록 표시용) (마이페이지용 - 상세 정보 포함) -->
+    <resultMap id="AccommodationResultMap" type="com.ssg9th2team.geharbang.domain.accommodation.dto.AccommodationResponseDto">
+        <id property="accommodationsId" column="accommodationsId"/>
+        <result property="accommodationsName" column="accommodationsName"/>
+        <result property="minPrice" column="minPrice"/>
+        <result property="city" column="city"/>
+        <result property="district" column="district"/>
+        <result property="township" column="township"/>
+        <result property="mainImageUrl" column="mainImageUrl"/>
+
+        <!-- rating은 accommodation 테이블에 직접 있지 않다면 별도 로직 필요하지만, 일단 ListDto처럼 가져오거나 계산된 값을 가져와야 함.
+             여기서는 review 테이블에서 평점을 계산하거나 accommodation 테이블에 평점 컬럼이 있다면 가져와야 함.
+             ListDto에서는 accommodation.rating을 가져오고 있었음. -->
+        <result property="rating" column="rating"/>
+        <collection property="themes" ofType="string">
+            <result column="theme_name"/>
+        </collection>
+    </resultMap>
+
+
+    <!-- 마이페이지용 + 상세페이지용 -->
+    <select id="selectWishlistByUserId" resultMap="AccommodationResultMap">
+        SELECT
+            a.accommodations_id AS accommodationsId,
+            a.accommodations_name AS accommodationsName,
+            a.min_price AS minPrice,
+            a.city,
+            a.district,
+            a.township,
+            a.rating,
+            t.theme_name,
+            -- 대표 이미지 1장
+            (SELECT ai.image_url
+             FROM accommodation_image ai
+             WHERE ai.accommodations_id = a.accommodations_id
+             ORDER BY ai.image_id ASC
+             LIMIT 1) AS mainImageUrl
+        FROM wishlist w
+        JOIN accommodation a ON w.accommodations_id = a.accommodations_id
+        LEFT JOIN accommodation_theme at ON a.accommodations_id = at.accommodations_id
+        LEFT JOIN theme t ON at.theme_id = t.theme_id
+        WHERE w.user_id = #{userId}
+        ORDER BY w.created_at DESC
+    </select>
+
+
+    <!-- 메인페이지용: 내가 찜한 숙소의 ID만 가져옴 (하트 색칠용) -->
+    <select id="selectWishlistAccommodationIds" resultType="java.lang.Long">
+        SELECT accommodations_id
+        FROM wishlist
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 숙소 삭제 시 연관된 위시리스트 삭제 -->
+    <delete id="deleteWishlistByAccommodationId">
+        DELETE FROM wishlist
+        WHERE accommodations_id = #{accommodationsId}
+    </delete>
+
+    <!-- 여러 숙소 삭제 시 연관된 위시리스트 일괄 삭제 -->
+    <delete id="deleteWishlistByAccommodationIdIn">
+        DELETE FROM wishlist
+        WHERE accommodations_id IN
+        <foreach collection="accommodationIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

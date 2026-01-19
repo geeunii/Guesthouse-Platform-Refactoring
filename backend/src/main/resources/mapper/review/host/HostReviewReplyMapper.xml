@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.review.host.repository.mybatis.HostReviewReplyMapper">
+
+    <select id="selectReplyByReviewId"
+            resultType="com.ssg9th2team.geharbang.domain.review.host.dto.HostReviewReplyRow">
+        SELECT
+            reply_id AS replyId,
+            review_id AS reviewId,
+            user_id AS userId,
+            content,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+        FROM review_replies
+        WHERE review_id = #{reviewId}
+        LIMIT 1
+    </select>
+
+    <insert id="insertReply">
+        INSERT INTO review_replies (
+            review_id,
+            user_id,
+            content,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            #{reviewId},
+            #{userId},
+            #{content},
+            NOW(),
+            NULL
+        )
+    </insert>
+
+    <update id="updateReply">
+        UPDATE review_replies
+        SET content = #{content},
+            updated_at = NOW()
+        WHERE reply_id = #{replyId}
+    </update>
+
+</mapper>

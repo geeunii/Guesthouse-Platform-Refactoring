@@ -1,0 +1,110 @@
+name: Gemini Code Review (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review (e.g. 123)"
+        required: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR info
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number(core.getInput('pr_number'));
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('pr_number', prNumber);
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git fetch origin ${{ steps.pr.outputs.base_ref }}
+          git fetch origin ${{ steps.pr.outputs.head_sha }}
+
+          DIFF=$(git diff origin/${{ steps.pr.outputs.base_ref }}...${{ steps.pr.outputs.head_sha }} -- '*.java' '*.yml' '*.properties' | head -c 30000)
+
+          echo "diff<<EOF" >> $GITHUB_OUTPUT
+          echo "$DIFF" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Review with Gemini
+        id: review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DIFF_CONTENT: ${{ steps.diff.outputs.diff }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "review=API 키가 설정되지 않았습니다." >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if [ -z "$DIFF_CONTENT" ]; then
+            echo "review=변경된 코드가 없거나 파일 확장자가 일치하지 않습니다." >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{
+            "contents": [{
+              "parts": [{
+                "text": ("당신은 시니어 백엔드 개발자입니다. 아래 코드 변경사항을 리뷰해주세요.\n\n리뷰 기준:\n1. 버그 가능성\n2. 보안 취약점\n3. 성능 이슈\n4. 코드 스타일/가독성\n5. 개선 제안\n\n한국어로 간결하게 답변해주세요. 문제가 없으면 \"LGTM\"이라고 답변해주세요.\n\n```diff\n" + $diff + "\n```")
+              }]
+            }],
+            "generationConfig": { "temperature": 0.2, "maxOutputTokens": 2048 }
+          }')
+
+          RESPONSE=$(curl -s -X POST \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}"  \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR_MSG" ]; then
+            echo "review=API 오류 발생: $ERROR_MSG" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          REVIEW=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // "리뷰 결과를 가져올 수 없습니다."' )
+
+          echo "review<<EOF" >> $GITHUB_OUTPUT
+          echo "$REVIEW" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post review comment
+        if: steps.review.outputs.review != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## 🤖 Gemini 코드 리뷰 (Manual)
+
+            ${{ steps.review.outputs.review }}
+
+            ---
+            *이 리뷰는 수동 실행으로 생성되었습니다. 참고용으로만 활용해주세요.*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number("${{ steps.pr.outputs.pr_number }}"),
+              body
+            });

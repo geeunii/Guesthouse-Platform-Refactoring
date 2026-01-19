@@ -1,0 +1,161 @@
+{
+  "info": {
+    "name": "Host Dashboard & Revenue",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "127.0.0.1:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Host Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://{{baseUrl}}/api/host/dashboard/summary?year=2025&month=12",
+              "protocol": "http",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "host",
+                "dashboard",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2025"
+                },
+                {
+                  "key": "month",
+                  "value": "12"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Today Schedule",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://{{baseUrl}}/api/host/dashboard/today-schedule?date=2025-12-22",
+              "protocol": "http",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "host",
+                "dashboard",
+                "today-schedule"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2025-12-22"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Host Revenue",
+      "item": [
+        {
+          "name": "Get Revenue Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://{{baseUrl}}/api/host/revenue/summary?year=2025&month=12",
+              "protocol": "http",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "host",
+                "revenue",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2025"
+                },
+                {
+                  "key": "month",
+                  "value": "12"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Revenue Trend",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://{{baseUrl}}/api/host/revenue/trend?year=2025",
+              "protocol": "http",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "host",
+                "revenue",
+                "trend"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2025"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Revenue Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://{{baseUrl}}/api/host/revenue/details?from=2025-01-01&to=2025-12-31",
+              "protocol": "http",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "host",
+                "revenue",
+                "details"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2025-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2025-12-31"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

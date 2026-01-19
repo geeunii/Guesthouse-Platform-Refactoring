@@ -1,0 +1,209 @@
+############################
+# OS 공통
+############################
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# 공통
+*.log
+*.tmp
+*.swp
+*.swo
+
+############################
+# IDE / Editor
+############################
+# IntelliJ / IDEA
+.idea/
+*.iml
+*.iws
+out/
+*.ipr
+
+# VSCode
+.vscode/
+.history/
+.settings/
+
+############################
+# Java / Spring Boot / Build
+############################
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
+
+# Gradle (멀티모듈 포함)
+.gradle/
+**/build/
+backend/bin/
+
+# Spring Boot / Java 빌드 산출물
+*.jar
+*.war
+*.ear
+spring.log
+
+# ✅ Gradle Wrapper는 반드시 커밋되어야 함 (위의 *.jar 무시를 예외 처리)
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradlew
+!gradlew.bat
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.properties
+
+# Lombok (lombok.config를 팀에서 쓴다면 보통 커밋하는 편이라 "무시"는 비추천)
+# lombok.config
+
+############################
+# Node / Vue / Frontend
+############################
+node_modules/
+frontend/node-v*
+backend/.gradle/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vue / 빌드 산출물
+dist/
+dist-ssr/
+*.local
+*.cache
+.cache/
+.vuepress/dist/
+.nuxt/
+.next/
+
+# Frontend build output copied to backend
+backend/src/main/resources/static/
+
+# Vite / Webpack 등
+.vite/
+coverage/
+*.tsbuildinfo
+
+############################
+# 환경 변수 / 비밀 정보
+############################
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Spring Boot Secret Properties
+**/application-secret.properties
+**/application-secret.yml
+**/application-secret.yaml
+
+# NCP 관련 키/설정 (예시)
+ncp-credentials.json
+ncp-*.key
+ncp-*.pem
+
+# Google Cloud / Vision API
+**/googlevision/
+
+############################
+# Docker / 컨테이너
+############################
+.docker/
+docker-data/
+docker-compose.override.yml
+docker-compose.*.override.yml
+
+############################
+# 테스트 출력물 (추적 불필요)
+############################
+backend/test_output*.txt
+docker-compose.*.local.yml
+.env.docker
+.envrc
+*.pid
+
+############################
+# Cloud / Infra CLI & IaC
+############################
+.aws/
+.gcloud/
+.azure/
+.kube/
+.helm/
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+terraform.tfvars.json
+cdktf.out/
+
+############################
+# Secrets / Service accounts
+############################
+*service-account*.json
+*credentials*.json
+*.pem
+*.key
+*.p12
+secrets*.yml
+secrets*.yaml
+
+############################
+# 기타
+############################
+Icon?
+.Spotlight-V100
+.Trashes
+
+# 백업 파일
+*.bak
+*.backup
+*.orig
+*.old
+*~
+
+# logs
+*.log
+*.log.*
+*.gz
+logs/
+log/
+!backend/src/main/java/com/ssg9th2team/geharbang/domain/admin/log/
+!backend/src/main/java/com/ssg9th2team/geharbang/domain/admin/log/*.java
+
+# Test results
+docs/test-results-*.md
+
+# Downloaded Images for Migration
+downloaded_images/
+
+# PR Description (local only)
+PR_DESCRIPTION.md
+
+# Scripts (테스트 스크립트 등)
+scripts/*.sh
+scripts/test_*.py
+scripts/concurrency_test.sh
+scripts/load_test.sh
+scripts/test_email.sh  
+
+# Frontend Build Artifacts
+**/src/main/resources/static/assets/
+src/main/resources/static/index.html
+######
+backend/secrets.env
+backend/test-local.ps1
+backend/docker-compose.local.yml

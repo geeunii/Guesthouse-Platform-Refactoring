@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.room.repository.mybatis.RoomMapper">
+
+
+    <!--단일 객실 등록 (추가 객실 등록)-->
+    <insert id="insertRoom" parameterType="com.ssg9th2team.geharbang.domain.room.entity.Room"
+            useGeneratedKeys="true" keyProperty="room.roomId">
+        INSERT INTO room(accommodations_id, room_name, price, weekend_price, min_guests, max_guests,
+                         room_description, room_introduction, main_image_url, room_status, bathroom_count, room_type, bed_count)
+        VALUES (#{room.accommodationsId}, #{room.roomName}, #{room.price}, #{room.weekendPrice},
+                #{room.minGuests}, #{room.maxGuests}, #{room.roomDescription}, #{room.roomIntroduction}, #{room.mainImageUrl},
+                COALESCE(#{room.roomStatus}, 1), #{room.bathroomCount}, #{room.roomType}, #{room.bedCount})
+
+    </insert>
+
+
+    <!--다중 객실 등록 (첫 숙소 등록시 객실 등록)-->
+    <insert id="insertRooms">
+        INSERT INTO room(accommodations_id, room_name, price, weekend_price, min_guests, max_guests,
+        room_description, room_introduction, main_image_url, room_status, bathroom_count, room_type, bed_count)
+        VALUES
+        <foreach collection="rooms" item="room" separator=",">
+            (#{accommodationsId}, #{room.roomName}, #{room.price}, #{room.weekendPrice},
+            #{room.minGuests}, #{room.maxGuests}, #{room.roomDescription}, #{room.roomIntroduction}, #{room.mainImageUrl},
+            COALESCE(#{room.roomStatus}, 1), #{room.bathroomCount}, #{room.roomType}, #{room.bedCount})
+        </foreach>
+    </insert>
+
+
+
+
+    <!--객실 상세조회-->
+    <select id="selectRoomById" resultType="com.ssg9th2team.geharbang.domain.room.dto.RoomResponseDto">
+        SELECT r.room_id,
+               r.accommodations_id,
+               r.room_name,
+               r.price,
+               r.weekend_price,
+               r.min_guests,
+               r.max_guests,
+               r.room_description,
+               r.room_introduction,
+               r.main_image_url,
+               r.room_status,
+               r.bathroom_count,
+               r.room_type,
+               r.bed_count
+        FROM room r
+        join accommodation a on a.accommodations_id = r.accommodations_id
+        where a.accommodations_id = #{accommodationsId}
+          AND r.room_id = #{roomId}
+    </select>
+
+
+
+    <!--객실 수정-->
+    <update id="updateRoom" parameterType="com.ssg9th2team.geharbang.domain.room.entity.Room">
+        UPDATE room
+        SET room_name = #{room.roomName},
+            price = #{room.price},
+            weekend_price = #{room.weekendPrice},
+            min_guests = #{room.minGuests},
+            max_guests = #{room.maxGuests},
+            room_description = #{room.roomDescription},
+            room_introduction = #{room.roomIntroduction},
+            main_image_url = #{room.mainImageUrl},
+            room_status = COALESCE(#{room.roomStatus}, 1),
+            bathroom_count = #{room.bathroomCount},
+            room_type = #{room.roomType},
+            bed_count = #{room.bedCount},
+            change_info_room = NOW()
+        WHERE accommodations_id = #{accommodationsId}
+          AND room_id = #{roomId}
+    </update>
+
+
+
+
+    <delete id="deleteRoom">
+        DELETE FROM room
+        WHERE accommodations_id = #{accommodationsId}
+          AND room_id = #{roomId}
+    </delete>
+
+
+
+</mapper>

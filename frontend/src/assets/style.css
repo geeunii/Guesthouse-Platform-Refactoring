@@ -1,0 +1,536 @@
+@font-face {
+    font-family: 'NanumSquareRound';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/NanumSquareRound.woff') format('woff');
+    font-weight: bold;
+    font-display: swap;
+}
+
+/* 경기천년제목 폰트 */
+@font-face {
+    font-family: 'GyeonggiMillenniumTitle';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-3@1.0/Title_Light.woff') format('woff');
+    font-weight: 300;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'GyeonggiMillenniumTitle';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-3@1.0/Title_Bold.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+
+/* TMoneyDungunbaram 폰트 */
+@font-face {
+    font-family: 'TMoneyDungunbaram';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-07@1.0/TmoneyRoundWindRegular.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'TMoneyDungunbaram';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-07@1.0/TmoneyRoundWindExtraBold.woff') format('woff');
+    font-weight: 800;
+    font-display: swap;
+}
+
+:root {
+    --primary: #BFE7DF;
+    --primary-hover: #A0D1C8;
+
+    --brand-primary: #BFE7DF;
+    --brand-primary-strong: #6DC3BB;
+    --brand-accent: #0f766e;
+    --brand-on-primary: #0f172a;
+    --brand-border: #e5e7eb;
+    --brand-bg: #f8f9fa;
+    --brand-200: #BFE7DF;
+    --brand-600: #0f766e;
+    --text-default: #0f172a;
+    --text-strong: #0f172a;
+    --surface: #ffffff;
+
+    --text-main: #111827;
+    --text-sub: #6b7280;
+
+    --bg-body: #F8F9FA;
+    --bg-white: #FFFFFF;
+
+    --border: #e5e7eb;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.04);
+
+    --radius-md: 12px;
+    --radius-lg: 16px;
+
+    --font-main: 'TMoneyDungunbaram', 'NanumSquareRound', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-calendar: 'NanumSquareRound', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    --card-width: 280px;
+
+    --host-accent: var(--brand-accent);
+    --host-title: var(--brand-accent);
+}
+
+/* ✅ 전역 reset은 최소만 (다른 화면 안 깨지게) */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    /* ✅ body 기본 여백만 제거 */
+    font-family: var(--font-main);
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    font-weight: 300;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+:focus-visible {
+    outline: 2px solid var(--brand-primary-strong);
+    outline-offset: 2px;
+}
+
+/*
+ * 캘린더 폰트 통일을 위한 스타일
+ * 
+ * !important 사용 사유:
+ * - body에 TMoneyDungunbaram 폰트가 기본으로 설정되어 있으나,
+ *   캘린더 UI에는 NanumSquareRound가 더 가독성이 좋아 별도 폰트를 적용
+ * - TheHeader.vue, RoomDetailCalendar.vue 등 여러 컴포넌트에 분산된
+ *   캘린더 관련 요소들의 폰트를 일관되게 통일하기 위해 전역 스타일에서 적용
+ * - 컴포넌트 scoped 스타일 명시도를 override 하기 위해 !important 사용
+ * 
+ * TODO: 장기적으로 캘린더를 공통 컴포넌트로 분리하고,
+ *       해당 컴포넌트 내부에서 폰트를 관리하는 것이 권장됨
+ */
+.calendar-popup,
+.mobile-calendar-popup,
+.calendar-container,
+.calendar-month,
+.calendar-days,
+.calendar-day,
+.calendar-weekdays,
+.weekday,
+.calendar-month-title,
+.calendar-nav-btn {
+    font-family: var(--font-calendar) !important;
+}
+
+/* ✅ border는 건드리지 않음 */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Host 공통 UI */
+.host-view-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1.25rem;
+}
+
+.host-view-header__actions {
+    margin-top: 0.65rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.host-title {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--host-title);
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.host-subtitle {
+    color: var(--text-sub);
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+@media (min-width: 768px) {
+    .host-view-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+    }
+
+    .host-view-header__actions {
+        margin-top: 0;
+    }
+}
+
+@media (min-width: 1024px) {
+    .host-title {
+        font-size: 2rem;
+    }
+}
+
+.host-card {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #004d40;
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    font-weight: 700;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+/* Host theme utilities */
+.host-active {
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+    border-color: var(--brand-primary-strong);
+}
+
+.host-chip {
+    border: 1px solid var(--brand-border);
+    background: var(--surface);
+    color: var(--text-default);
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.host-chip--active {
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+    border-color: var(--brand-primary-strong);
+}
+
+.chip {
+    border: 1px solid var(--brand-border);
+    background: var(--surface);
+    color: var(--text-default);
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.chip--active {
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+    border-color: var(--brand-primary-strong);
+}
+
+.tab {
+    background: transparent;
+    color: var(--text-default);
+}
+
+.tab--active {
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+}
+
+.host-nav-item--active {
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+    border-color: var(--brand-primary-strong);
+}
+
+.host-btn--primary {
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+    border: 1px solid var(--brand-primary-strong);
+    font-weight: 700;
+}
+
+.host-btn--primary:hover {
+    background: var(--brand-primary-strong);
+}
+
+.host-chip:hover,
+.host-chip:focus-visible {
+    border-color: var(--brand-primary-strong);
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+}
+
+.host-nav-item--active:focus-visible,
+.host-btn--primary:focus-visible {
+    outline-color: var(--brand-primary-strong);
+}
+
+/* Admin common UI */
+.admin-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-md);
+}
+
+.admin-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.admin-input,
+.admin-select {
+    height: 38px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0 12px;
+    font-weight: 700;
+    background: #ffffff;
+    color: #1f2937;
+}
+
+.admin-input {
+    min-width: 220px;
+}
+
+.admin-chip {
+    background: #f1f5f9;
+    color: #0b3b32;
+    border: 1px solid #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.admin-btn {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    background: #ffffff;
+}
+
+.admin-btn--primary {
+    background: #0f766e;
+    color: #ffffff;
+}
+
+.admin-btn--ghost {
+    border-color: #cbd5e1;
+    color: #0f766e;
+}
+
+.admin-btn--muted {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    color: #334155;
+}
+
+.admin-btn--danger {
+    border-color: #fecaca;
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.admin-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.admin-shell.is-dark {
+    --bg-body: #0b0f14;
+    --bg-white: #111820;
+    --border: #1f2a33;
+    --text-main: #e6eef3;
+    --text-sub: #9fb0bb;
+}
+
+.admin-shell.is-dark .admin-topbar {
+    background: #0f151c;
+    color: #e6eef3;
+    box-shadow: 0 10px 24px rgba(6, 10, 14, 0.55);
+}
+
+.admin-shell.is-dark .admin-logo-dot {
+    background: #BFE7DF;
+    box-shadow: 0 0 0 6px rgba(191, 231, 223, 0.2);
+}
+
+.admin-shell.is-dark .admin-nav__link {
+    color: #c8d6dd;
+}
+
+.admin-shell.is-dark .admin-nav__link.is-active {
+    background: rgba(191, 231, 223, 0.18);
+    color: #e9f7f4;
+    border: 1px solid rgba(191, 231, 223, 0.35);
+}
+
+.admin-shell.is-dark .admin-title,
+.admin-shell.is-dark .admin-strong {
+    color: #f4fbff;
+}
+
+.admin-shell.is-dark .admin-subtitle,
+.admin-shell.is-dark .admin-sub {
+    color: #9fb0bb;
+}
+
+.admin-shell.is-dark .admin-card,
+.admin-shell.is-dark .admin-table-card {
+    background: #111820;
+    border-color: #1f2a33;
+    box-shadow: 0 14px 28px rgba(6, 10, 14, 0.45);
+}
+
+.admin-shell.is-dark table th {
+    background: #0f151c;
+    color: #b9c7cf;
+}
+
+.admin-shell.is-dark table td {
+    color: #e6eef3;
+}
+
+.admin-shell.is-dark .admin-btn--primary {
+    background: #BFE7DF;
+    color: #0b3b32;
+}
+
+.admin-shell.is-dark .admin-btn--ghost {
+    color: #BFE7DF;
+    border-color: #2a3a44;
+}
+
+.admin-shell.is-dark .admin-btn--muted {
+    border-color: #2a3a44;
+    background: #0f151c;
+    color: #c8d6dd;
+}
+
+.admin-shell.is-dark .admin-filter-bar,
+.admin-shell.is-dark .admin-table--tight {
+    background: #0f151c;
+    border-color: #1f2a33;
+}
+
+.admin-shell.is-dark .admin-input,
+.admin-shell.is-dark .admin-select {
+    background: #0b1117;
+    border-color: #24323a;
+    color: #e6eef3;
+}
+
+.admin-shell.is-dark .admin-chip {
+    background: rgba(191, 231, 223, 0.12);
+    border-color: rgba(191, 231, 223, 0.28);
+    color: #dff3ee;
+}
+
+.admin-shell.is-dark .admin-alert-item,
+.admin-shell.is-dark .admin-highlight-item {
+    background: #0f151c;
+    border-color: #1f2a33;
+}
+
+.admin-shell.is-dark .admin-chart-bar {
+    background: rgba(191, 231, 223, 0.22);
+}
+
+.admin-shell.is-dark .admin-chart-bar__label {
+    color: #b9c7cf;
+}
+
+.admin-shell.is-dark .admin-highlight-sub {
+    color: #9fb0bb;
+}
+
+.admin-shell.is-dark .admin-card__eyebrow {
+    color: #b9c7cf;
+}
+
+.admin-inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.admin-inline-actions--nowrap {
+    flex-wrap: nowrap;
+}
+
+.admin-dropdown {
+    position: relative;
+}
+
+.admin-dropdown summary {
+    cursor: pointer;
+}
+
+.admin-dropdown summary:hover,
+.admin-dropdown summary:focus-visible {
+    border-color: #0f766e;
+    background: #f8fafc;
+}
+
+.admin-dropdown summary {
+    list-style: none;
+}
+
+.admin-dropdown summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-dropdown__menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+    z-index: 20;
+}
+
+.admin-dropdown__item {
+    text-align: left;
+    width: 100%;
+}
+
+.btn-ghost {
+    border: 1px solid #d1d5db;
+    background: transparent;
+    color: var(--host-accent);
+    border-radius: 10px;
+    padding: 0.55rem 0.8rem;
+    font-weight: 700;
+}

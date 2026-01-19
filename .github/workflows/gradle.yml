@@ -1,0 +1,163 @@
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x ./gradlew
+
+    - name: Build with Gradle
+      run: ./gradlew build -x test
+      env:
+        SPRING_PROFILES_ACTIVE: test
+
+    - name: Build JAR for deployment
+      run: ./gradlew bootJar
+
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-jar
+        path: backend/build/libs/geharbang-0.0.1-SNAPSHOT.jar
+
+  build-docker:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: backend/
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/guesthouse-backend:latest
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build frontend
+      run: npm run build
+      env:
+        VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+    - name: Upload frontend artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: frontend/dist
+
+  deploy:
+    needs: [build-docker, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download frontend artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-dist
+        path: ./frontend-dist
+
+    - name: Setup SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.PUBLIC_SERVER_IP }} >> ~/.ssh/known_hosts
+
+    - name: Deploy Backend to Private Server via Public Server
+      run: |
+        # Public 서버로 docker-compose.yml 전송 (Dockerfile 및 JAR 전송 불필요)
+        scp -o StrictHostKeyChecking=no backend/docker-compose.yml ${{ secrets.SSH_USERNAME }}@${{ secrets.PUBLIC_SERVER_IP }}:/tmp/
+        
+        # Public 서버에서 Private 서버로 전송 및 Docker 이미지 Pull & 재시작
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USERNAME }}@${{ secrets.PUBLIC_SERVER_IP }} << 'EOF'
+          scp /tmp/docker-compose.yml root@${{ secrets.PRIVATE_SERVER_IP }}:~/applications/thismo/
+          ssh root@${{ secrets.PRIVATE_SERVER_IP }} "cd ~/applications/thismo && docker-compose pull && docker-compose up -d && docker system prune -a -f"
+          rm /tmp/docker-compose.yml
+        EOF
+
+    - name: Deploy Frontend to Public Server
+      run: |
+        # 프론트엔드 빌드 파일을 tar로 압축
+        tar -czvf frontend-dist.tar.gz -C ./frontend-dist .
+        
+        # Public 서버로 전송 및 배포
+        scp -o StrictHostKeyChecking=no frontend-dist.tar.gz ${{ secrets.SSH_USERNAME }}@${{ secrets.PUBLIC_SERVER_IP }}:/tmp/
+        
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USERNAME }}@${{ secrets.PUBLIC_SERVER_IP }} << 'EOF'
+          # 백업 생성
+          sudo cp -r /var/www/html /var/www/html.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null || true
+          # 기존 파일 삭제 후 새 파일 배포
+          sudo rm -rf /var/www/html/*
+          sudo tar -xzvf /tmp/frontend-dist.tar.gz -C /var/www/html/
+          sudo chown -R www-data:www-data /var/www/html/
+          rm /tmp/frontend-dist.tar.gz
+        EOF
+
+    - name: Deployment Complete
+      run: echo "✅ Backend and Frontend deployment completed successfully!"
+

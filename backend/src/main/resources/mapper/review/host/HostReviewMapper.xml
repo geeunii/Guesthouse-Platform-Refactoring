@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.review.host.repository.mybatis.HostReviewMapper">
+
+    <select id="selectSummary"
+            resultType="com.ssg9th2team.geharbang.domain.review.host.dto.HostReviewSummaryResponse">
+        SELECT
+            ROUND(IFNULL(AVG(r.rating), 0), 1) AS avgRating,
+            COUNT(*) AS reviewCount
+        FROM review r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        WHERE a.user_id = #{hostId}
+          AND r.is_deleted = 0
+    </select>
+
+    <select id="selectReviews"
+            resultType="com.ssg9th2team.geharbang.domain.review.host.dto.HostReviewResponse">
+        SELECT
+            r.review_id AS reviewId,
+            r.accommodations_id AS accommodationId,
+            a.accommodations_name AS accommodationName,
+            r.rating,
+            r.content,
+            COALESCE(r.author_name, u.nickname, u.name, u.email) AS authorName,
+            r.visit_date AS visitDate,
+            r.created_at AS createdAt,
+            r.is_crawled AS isCrawled,
+            rr.content AS replyContent,
+            COALESCE(rr.updated_at, rr.created_at) AS replyUpdatedAt
+        FROM review r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        JOIN users u ON u.user_id = r.user_id
+        LEFT JOIN review_replies rr ON rr.review_id = r.review_id
+        WHERE a.user_id = #{hostId}
+          AND r.is_deleted = 0
+          <if test="accommodationId != null">
+            AND r.accommodations_id = #{accommodationId}
+          </if>
+        <choose>
+            <when test="sort == 'oldest'">
+                ORDER BY r.created_at ASC
+            </when>
+            <otherwise>
+                ORDER BY r.created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="selectReviewIdForHost" resultType="long">
+        SELECT r.review_id
+        FROM review r
+        JOIN accommodation a ON a.accommodations_id = r.accommodations_id
+        WHERE a.user_id = #{hostId}
+          AND r.review_id = #{reviewId}
+          AND r.is_deleted = 0
+        LIMIT 1
+    </select>
+
+</mapper>

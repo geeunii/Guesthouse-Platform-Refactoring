@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.accommodation.repository.mybatis.AccommodationMapper">
+
+
+    <!-- 기존 N+1 방식 ResultMap -->
+    <resultMap id="AccommodationDetailMap" type="com.ssg9th2team.geharbang.domain.accommodation.dto.AccommodationResponseDto" autoMapping="true">
+        <id property="accommodationsId" column="accommodationsId"/>
+        <result property="accommodationsCategory" column="accommodationsCategory" jdbcType="VARCHAR" javaType="java.lang.String"/>
+
+        <!-- amenities 제거: amenityDetails에서 이름만 추출 가능 -->
+        <collection property="amenityDetails" column="accommodationsId" select="selectAmenityDetailsByAccommodationId"/>
+        <collection property="themes" column="accommodationsId" select="selectThemesByAccommodationId"/>
+        <collection property="rooms" column="accommodationsId" select="selectRoomsByAccommodationId"/>
+        <collection property="images" column="accommodationsId" select="selectImagesByAccommodationId"/>
+        <collection property="reviews" column="accommodationsId" select="com.ssg9th2team.geharbang.domain.review.repository.mybatis.ReviewMapper.selectReviewsByAccommodationId"/>
+        <!-- 수정 페이지용 ID 목록 -->
+        <collection property="amenityIds" column="accommodationsId" select="selectAmenityIdsByAccommodationId"/>
+        <collection property="themeIds" column="accommodationsId" select="selectThemeIdsByAccommodationId"/>
+    </resultMap>
+
+    <!-- 최적화된 단일 쿼리 ResultMap (JOIN 방식) -->
+    <resultMap id="AccommodationDetailOptimizedMap" type="com.ssg9th2team.geharbang.domain.accommodation.dto.AccommodationResponseDto" autoMapping="true">
+        <id property="accommodationsId" column="accommodationsId"/>
+        <collection property="amenityDetails" ofType="com.ssg9th2team.geharbang.domain.accommodation.dto.AmenityDetailDto">
+            <result property="amenityName" column="amenityName"/>
+            <result property="amenityIcon" column="amenityIcon"/>
+        </collection>
+        <collection property="themes" ofType="string">
+            <result column="themeName"/>
+        </collection>
+        <collection property="rooms" ofType="com.ssg9th2team.geharbang.domain.room.dto.RoomResponseListDto">
+            <id property="roomId" column="roomId"/>
+            <result property="roomName" column="roomName"/>
+            <result property="roomDescription" column="roomDescription"/>
+            <result property="roomIntroduction" column="roomIntroduction"/>
+            <result property="maxGuests" column="maxGuests"/>
+            <result property="minGuests" column="minGuests"/>
+            <result property="price" column="price"/>
+            <result property="weekendPrice" column="weekendPrice"/>
+            <result property="mainImageUrl" column="roomMainImageUrl"/>
+            <result property="bathroomCount" column="bathroomCount"/>
+            <result property="bedCount" column="bedCount"/>
+            <result property="roomStatus" column="roomStatus"/>
+        </collection>
+        <collection property="images" ofType="com.ssg9th2team.geharbang.domain.accommodation.dto.AccommodationImageDto">
+            <result property="imageUrl" column="imageUrl"/>
+            <result property="imageType" column="imageType"/>
+            <result property="sortOrder" column="sortOrder"/>
+        </collection>
+        <!-- reviews는 복잡한 구조로 별도 쿼리 유지 -->
+        <collection property="reviews" column="accommodationsId" select="com.ssg9th2team.geharbang.domain.review.repository.mybatis.ReviewMapper.selectReviewsByAccommodationId"/>
+    </resultMap>
+
+
+
+    <!-- 정산계좌 등록 -->
+    <insert id="insertAccountNumber" parameterType="com.ssg9th2team.geharbang.domain.accommodation.dto.AccountNumberDto"
+            useGeneratedKeys="true" keyProperty="accountNumberId">
+        INSERT INTO account_number (bank_name, account_number, account_holder)
+        VALUES (#{bankName}, #{accountNumber}, #{accountHolder})
+    </insert>
+
+
+
+    <!-- 숙소 등록 -->
+    <insert id="insertAccommodation" parameterType="com.ssg9th2team.geharbang.domain.accommodation.entity.Accommodation"
+            useGeneratedKeys="true" keyProperty="accommodationsId">
+        INSERT INTO accommodation(
+            account_number_id,
+            user_id,
+            accommodations_name,
+            accommodations_category,
+            accommodations_description,
+            short_description,
+            city,
+            district,
+            township,
+            address_detail,
+            latitude,
+            longitude,
+            transport_info,
+            accommodation_status,
+            approval_status,
+            created_at,
+            phone,
+            business_registration_number,
+            business_registration_image,
+            parking_info,
+            sns,
+            check_in_time,
+            check_out_time
+        ) VALUES (
+            #{accountNumberId},
+            #{userId},
+            #{accommodationsName},
+            #{accommodationsCategory},
+            #{accommodationsDescription},
+            #{shortDescription},
+            #{city},
+            #{district},
+            #{township},
+            #{addressDetail},
+            #{latitude},
+            #{longitude},
+            #{transportInfo},
+            #{accommodationStatus},
+            #{approvalStatus},
+            #{createdAt},
+            #{phone},
+            #{businessRegistrationNumber},
+            #{businessRegistrationImage},
+            #{parkingInfo},
+            #{sns},
+            #{checkInTime},
+            #{checkOutTime}
+        )
+    </insert>
+
+    <!-- 숙소 상세조회 (기존 방식 - 6개 쿼리) -->
+    <select id="selectAccommodationById" resultMap="AccommodationDetailMap">
+        SELECT
+            a.accommodations_id AS accommodationsId,
+            a.account_number_id AS accountNumberId,
+            a.user_id AS userId,
+            a.accommodations_name AS accommodationsName,
+            COALESCE(a.accommodations_category, 'GUESTHOUSE') AS accommodationsCategory,
+            a.accommodations_description AS accommodationsDescription,
+            a.short_description AS shortDescription,
+            a.city,
+            a.district,
+            a.township,
+            a.address_detail AS addressDetail,
+            a.latitude,
+            a.longitude,
+            a.transport_info AS transportInfo,
+            a.accommodation_status AS accommodationStatus,
+            a.approval_status AS approvalStatus,
+            a.created_at AS createdAt,
+            a.phone,
+            a.business_registration_number AS businessRegistrationNumber,
+            a.business_registration_image AS businessRegistrationImage,
+            a.parking_info AS parkingInfo,
+            a.sns,
+            a.check_in_time AS checkInTime,
+            a.check_out_time AS checkOutTime,
+            a.min_price AS minPrice,
+            a.rating AS rating,
+            a.review_count AS reviewCount,
+            a.rejection_reason AS rejectionReason,
+            an.bank_name AS bankName,
+            an.account_number AS accountNumber,
+            an.account_holder AS accountHolder
+        FROM accommodation a
+        LEFT JOIN users u ON a.user_id = u.user_id
+        LEFT JOIN account_number an ON a.account_number_id = an.account_number_id
+        WHERE a.accommodations_id = #{accommodationsId}
+    </select>
+
+
+    <!-- 숙소 수정 -->
+    <update id="updateAccommodation">
+        UPDATE accommodation
+        SET
+            accommodations_name = #{Accommodation.accommodationsName},
+            accommodations_description = #{Accommodation.accommodationsDescription},
+            short_description = #{Accommodation.shortDescription},
+            transport_info = #{Accommodation.transportInfo},
+            accommodation_status = #{Accommodation.accommodationStatus},
+            parking_info = #{Accommodation.parkingInfo},
+            sns = #{Accommodation.sns},
+            phone = #{Accommodation.phone},
+            check_in_time = #{Accommodation.checkInTime},
+            check_out_time = #{Accommodation.checkOutTime},
+            latitude = #{Accommodation.latitude},
+            longitude = #{Accommodation.longitude},
+            approval_status = CASE
+                WHEN approval_status = 'REJECTED' THEN 'PENDING'
+                ELSE approval_status
+            END
+        WHERE accommodations_id = #{accommodationsId}
+    </update>
+
+    <!-- 정산계좌 수정 -->
+    <update id="updateAccountNumber">
+        UPDATE account_number
+        SET
+            bank_name = #{AccountNumberDto.bankName},
+            account_number = #{AccountNumberDto.accountNumber},
+            account_holder = #{AccountNumberDto.accountHolder}
+        WHERE account_number_id = #{accountNumberId}
+    </update>
+
+
+    <!-- 숙소 삭제 -->
+    <delete id="deleteAccommodation">
+        DELETE FROM accommodation
+        WHERE accommodations_id = #{accommodationsId}
+    </delete>
+
+    <delete id="deleteAccommodationAmenities">
+        DELETE FROM accommodation_amenity
+        WHERE accommodations_id = #{accommodationsId}
+    </delete>
+
+    <delete id="deleteAccommodationImages">
+        DELETE FROM accommodation_image
+        WHERE accommodations_id = #{accommodationsId}
+    </delete>
+
+    <delete id="deleteAccommodationThemes">
+        DELETE FROM accommodation_theme
+        WHERE accommodations_id = #{accommodationsId}
+    </delete>
+
+    <!-- 일괄 삭제 쿼리들 -->
+    <delete id="deleteAccommodations">
+        DELETE FROM accommodation
+        WHERE accommodations_id IN
+        <foreach collection="accommodationIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteAccommodationAmenitiesIn">
+        DELETE FROM accommodation_amenity
+        WHERE accommodations_id IN
+        <foreach collection="accommodationIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteAccommodationImagesIn">
+        DELETE FROM accommodation_image
+        WHERE accommodations_id IN
+        <foreach collection="accommodationIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteAccommodationThemesIn">
+        DELETE FROM accommodation_theme
+        WHERE accommodations_id IN
+        <foreach collection="accommodationIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+
+
+
+    <!-- ===== 연관 테이블 ===== -->
+
+    <!-- 숙소 이미지 등록 -->
+    <insert id="insertAccommodationImages">
+        INSERT INTO accommodation_image (accommodations_id, image_url, image_type, sort_order)
+        VALUES
+        <foreach collection="images" item="image" separator=",">
+            (#{accommodationsId}, #{image.imageUrl}, #{image.imageType}, #{image.sortOrder})
+        </foreach>
+    </insert>
+
+    <!-- 숙소 편의시설 등록 -->
+    <insert id="insertAccommodationAmenities">
+        INSERT INTO accommodation_amenity (accommodations_id, amenity_id)
+        VALUES
+        <foreach collection="amenityIds" item="amenityId" separator=",">
+            (#{accommodationsId}, #{amenityId})
+        </foreach>
+    </insert>
+
+    <!-- 숙소 테마 등록 -->
+    <insert id="insertAccommodationThemes">
+        INSERT INTO accommodation_theme (accommodations_id, theme_id)
+        VALUES
+        <foreach collection="themeIds" item="themeId" separator=",">
+             (#{accommodationsId}, #{themeId})
+        </foreach>
+    </insert>
+
+
+
+    <!-- 편의시설 조회 (Nested Select) -->
+    <select id="selectAmenitiesByAccommodationId" resultType="string">
+        SELECT am.amenity_name
+        FROM accommodation_amenity aa
+        JOIN amenity am ON aa.amenity_id = am.amenity_id
+        WHERE aa.accommodations_id = #{accommodationsId}
+    </select>
+
+    <select id="selectAmenityDetailsByAccommodationId"
+            resultType="com.ssg9th2team.geharbang.domain.accommodation.dto.AmenityDetailDto">
+        SELECT
+            am.amenity_name AS amenityName,
+            am.amenity_icon AS amenityIcon
+        FROM accommodation_amenity aa
+        JOIN amenity am ON aa.amenity_id = am.amenity_id
+        WHERE aa.accommodations_id = #{accommodationsId}
+    </select>
+
+    <!-- 테마 조회 (Nested Select) -->
+    <select id="selectThemesByAccommodationId" resultType="string">
+        SELECT t.theme_name
+        FROM accommodation_theme at
+        JOIN theme t ON at.theme_id = t.theme_id
+        WHERE at.accommodations_id = #{accommodationsId}
+    </select>
+
+    <!-- 객실 리스트 조회 (Nested Select) -->
+    <select id="selectRoomsByAccommodationId" resultType="com.ssg9th2team.geharbang.domain.room.dto.RoomResponseListDto">
+        SELECT
+            room_id AS roomId,
+            room_name AS roomName,
+            room_description AS roomDescription,
+            room_introduction AS roomIntroduction,
+            max_guests AS maxGuests,
+            min_guests AS minGuests,
+            price,
+            weekend_price AS weekendPrice,
+            main_image_url AS mainImageUrl,
+            bathroom_count AS bathroomCount,
+            bed_count AS bedCount,
+            room_status AS roomStatus
+        FROM room
+        WHERE accommodations_id = #{accommodationsId}
+        ORDER BY room_id
+    </select>
+
+    <!-- 이미지 조회 (Nested Select) -->
+    <select id="selectImagesByAccommodationId" resultType="com.ssg9th2team.geharbang.domain.accommodation.dto.AccommodationImageDto">
+        SELECT
+            image_url AS imageUrl,
+            image_type AS imageType,
+            sort_order AS sortOrder
+        FROM accommodation_image
+        WHERE accommodations_id = #{accommodationsId}
+        ORDER BY sort_order
+    </select>
+
+    <!-- 편의시설 ID 조회 (Nested Select) -->
+    <select id="selectAmenityIdsByAccommodationId" resultType="long">
+        SELECT amenity_id
+        FROM accommodation_amenity
+        WHERE accommodations_id = #{accommodationsId}
+    </select>
+
+    <!-- 테마 ID 조회 (Nested Select) -->
+    <select id="selectThemeIdsByAccommodationId" resultType="long">
+        SELECT theme_id
+        FROM accommodation_theme
+        WHERE accommodations_id = #{accommodationsId}
+    </select>
+
+    <!-- 숙소 대표 이미지 URL 조회 (sort_order = 0) -->
+    <select id="selectMainImageUrl" resultType="string">
+        SELECT image_url
+        FROM accommodation_image
+        WHERE accommodations_id = #{accommodationsId}
+        ORDER BY sort_order
+        LIMIT 1
+    </select>
+
+    <!-- 여러 숙소의 대표 이미지 배치 조회 -->
+    <select id="selectMainImagesByAccommodationIds" resultType="com.ssg9th2team.geharbang.domain.accommodation.dto.AccommodationImageDto">
+        SELECT 
+            ai.accommodations_id AS accommodationsId,
+            ai.image_url AS imageUrl,
+            ai.image_type AS imageType,
+            ai.sort_order AS sortOrder
+        FROM accommodation_image ai
+        INNER JOIN (
+            SELECT accommodations_id, MIN(sort_order) AS min_sort
+            FROM accommodation_image
+            WHERE accommodations_id IN
+            <foreach collection="accommodationIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            GROUP BY accommodations_id
+        ) sub ON ai.accommodations_id = sub.accommodations_id AND ai.sort_order = sub.min_sort
+    </select>
+
+    <!-- Host 숙소 목록/단건 DTO (constructor 기반 매핑: immutable DTO 지원) -->
+    <resultMap id="HostAccommodationSummaryResult"
+               type="com.ssg9th2team.geharbang.domain.accommodation.dto.HostAccommodationSummaryResponse">
+        <constructor>
+            <idArg column="accommodationsId" javaType="java.lang.Long"/>
+            <arg column="accommodationsName" javaType="java.lang.String"/>
+            <arg column="status" javaType="java.lang.String"/>
+            <arg column="approvalStatus" javaType="java.lang.String"/>
+            <arg column="accommodationStatus" javaType="java.lang.Integer"/>
+            <arg column="rejectionReason" javaType="java.lang.String"/>
+            <arg column="city" javaType="java.lang.String"/>
+            <arg column="district" javaType="java.lang.String"/>
+            <arg column="township" javaType="java.lang.String"/>
+            <arg column="addressDetail" javaType="java.lang.String"/>
+            <arg column="maxGuests" javaType="java.lang.Integer"/>
+            <arg column="roomCount" javaType="java.lang.Integer"/>
+            <arg column="pricePerNight" javaType="java.lang.Integer"/>
+            <arg column="imageUrl" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <!-- Host 숙소 목록 -->
+    <select id="selectHostAccommodations"
+            resultMap="HostAccommodationSummaryResult">
+        SELECT
+            a.accommodations_id AS accommodationsId,
+            a.accommodations_name AS accommodationsName,
+            CASE
+                WHEN a.approval_status = 'PENDING' AND a.rejection_reason IS NOT NULL THEN 'reinspection'
+                WHEN a.approval_status = 'PENDING' THEN 'inspection'
+                WHEN a.approval_status = 'REJECTED' THEN 'rejected'
+                WHEN a.accommodation_status = 1 AND a.approval_status = 'APPROVED' THEN 'active'
+                WHEN a.approval_status = 'APPROVED' THEN 'inactive'
+                ELSE 'inactive'
+            END AS status,
+            a.approval_status AS approvalStatus,
+            a.accommodation_status AS accommodationStatus,
+            a.rejection_reason AS rejectionReason,
+            CASE
+                WHEN a.approval_status = 'PENDING' AND a.rejection_reason IS NOT NULL THEN 1
+                ELSE 0
+            END AS isResubmitted,
+            a.city,
+            a.district,
+            a.township,
+            a.address_detail AS addressDetail,
+            COALESCE(MAX(r.max_guests), 0) AS maxGuests,
+            COALESCE(COUNT(DISTINCT r.room_id), 0) AS roomCount,
+            COALESCE(a.min_price, MIN(r.price), 0) AS pricePerNight,
+            (SELECT ai.image_url FROM accommodation_image ai
+             WHERE ai.accommodations_id = a.accommodations_id
+             ORDER BY ai.sort_order ASC LIMIT 1) AS imageUrl
+        FROM accommodation a
+        LEFT JOIN room r
+            ON r.accommodations_id = a.accommodations_id
+            AND r.room_status = 1
+        WHERE a.user_id = #{hostId}
+        GROUP BY
+            a.accommodations_id,
+            a.accommodations_name,
+            a.approval_status,
+            a.accommodation_status,
+            a.city,
+            a.district,
+            a.township,
+            a.address_detail,
+            a.address_detail,
+            a.min_price,
+            a.created_at
+        ORDER BY a.created_at DESC
+    </select>
+
+    <select id="selectHostAccommodationById"
+            resultMap="HostAccommodationSummaryResult">
+        SELECT
+            a.accommodations_id AS accommodationsId,
+            a.accommodations_name AS accommodationsName,
+            CASE
+                WHEN a.approval_status = 'PENDING' AND a.rejection_reason IS NOT NULL THEN 'reinspection'
+                WHEN a.approval_status = 'PENDING' THEN 'inspection'
+                WHEN a.approval_status = 'REJECTED' THEN 'rejected'
+                WHEN a.accommodation_status = 1 AND a.approval_status = 'APPROVED' THEN 'active'
+                WHEN a.approval_status = 'APPROVED' THEN 'inactive'
+                ELSE 'inactive'
+            END AS status,
+            a.approval_status AS approvalStatus,
+            a.accommodation_status AS accommodationStatus,
+            a.rejection_reason AS rejectionReason,
+            CASE
+                WHEN a.approval_status = 'PENDING' AND a.rejection_reason IS NOT NULL THEN 1
+                ELSE 0
+            END AS isResubmitted,
+            a.city,
+            a.district,
+            a.township,
+            a.address_detail AS addressDetail,
+            COALESCE(MAX(r.max_guests), 0) AS maxGuests,
+            COALESCE(COUNT(DISTINCT r.room_id), 0) AS roomCount,
+            COALESCE(a.min_price, MIN(r.price), 0) AS pricePerNight,
+            (SELECT ai.image_url FROM accommodation_image ai
+             WHERE ai.accommodations_id = a.accommodations_id
+             ORDER BY ai.sort_order ASC LIMIT 1) AS imageUrl
+        FROM accommodation a
+        LEFT JOIN room r
+            ON r.accommodations_id = a.accommodations_id
+            AND r.room_status = 1
+        WHERE a.user_id = #{hostId}
+          AND a.accommodations_id = #{accommodationsId}
+        GROUP BY
+            a.accommodations_id,
+            a.accommodations_name,
+            a.approval_status,
+            a.accommodation_status,
+            a.city,
+            a.district,
+            a.township,
+            a.address_detail,
+            a.min_price
+    </select>
+
+
+    <!-- 숙소 최소 가격 업데이트 (해당 숙소의 객실 중 최저 가격으로 업데이트) -->
+    <update id="updateMinPrice">
+        UPDATE accommodation
+        SET min_price = (
+            SELECT MIN(price)
+            FROM room
+            WHERE accommodations_id = #{accommodationsId}
+              AND room_status = 1
+        )
+        WHERE accommodations_id = #{accommodationsId}
+    </update>
+
+</mapper>

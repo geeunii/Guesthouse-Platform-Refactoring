@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    activate:
+      on-profile: admin
+
+  datasource:
+    # [핵심 변경 1] localhost -> Public Server 내부 IP (10.0.0.6)
+    # [핵심 변경 2] 포트는 13306(로컬용)이 아니라 3306(서버 기본포트)일 확률이 높음.
+    url: jdbc:mysql://10.0.0.6:3306/guesthouse?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    # ▼ 수정: 환경변수에서 가져오도록 변경 (없으면 기본값 thismo 사용)
+    username: ${SPRING_DATASOURCE_USERNAME:thismo}
+    password: ${SPRING_DATASOURCE_PASSWORD:thismo1234}
+    # username: thismo
+    # password: thismo1234
+
+  data:
+    redis:
+      # [핵심 변경 3] Redis도 Public Server 내부 IP를 바라봐야 함
+      host: 10.0.0.6
+      port: 6379
+
+# [핵심 변경 4] 소셜 로그인/결제 리다이렉트 주소 변경
+# 로컬에서는 localhost지만, 서버에서는 '공인 IP' 또는 '도메인'이어야 함
+env:
+  # ▼ [수정] 실제 값 대신 환경변수(${...})를 사용하도록 변경
+  # (도커 실행 시 -e 옵션으로 넣어준 값이 여기로 들어갑니다)
+  oauth2-redirect-base-url: ${OAUTH2_REDIRECT_BASE_URL:http://49.50.138.206:8081}
+  oauth2-frontend-base-url: ${OAUTH2_FRONTEND_BASE_URL:http://49.50.138.206:8081}
+
+# properties에 있는 ${OAUTH2_REDIRECT_BASE_URL} 변수를 이걸로 덮어씌움
+logging:
+  level:
+    root: INFO

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="/icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>지금이곳</title>
+  <!-- Polyfill for sockjs-client -->
+  <script>
+    window.global = window;
+  </script>
+  <!-- Kakao Map SDK with services library for Geocoder -->
+  <script type="text/javascript"
+    src="//dapi.kakao.com/v2/maps/sdk.js?appkey=edff5897f4250925f0de3f4ca22d615f&libraries=services,clusterer&autoload=false"></script>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>

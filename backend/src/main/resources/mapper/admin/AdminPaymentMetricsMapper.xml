@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssg9th2team.geharbang.domain.admin.repository.mybatis.AdminPaymentMetricsMapper">
+    <sql id="PaymentFilters">
+        <if test="status != null">
+            AND p.payment_status = #{status}
+        </if>
+        <if test="typeCode != null">
+            <choose>
+                <when test="typeCode == 'REFUND'">
+                    AND p.payment_status = 3
+                </when>
+                <when test="typeCode == 'RESERVATION'">
+                    AND p.payment_status &lt;&gt; 3
+                </when>
+            </choose>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                p.order_id LIKE CONCAT('%', #{keyword}, '%')
+                OR p.pg_payment_key LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </sql>
+
+    <select id="selectMonthlyMetrics" resultType="com.ssg9th2team.geharbang.domain.admin.dto.AdminPaymentMetricsRow">
+        SELECT
+            MONTH(p.created_at) AS period,
+            COALESCE(SUM(p.approved_amount), 0) AS totalAmount,
+            COUNT(*) AS totalCount
+        FROM payment p
+        WHERE p.created_at BETWEEN #{from} AND #{to}
+        <include refid="PaymentFilters" />
+        GROUP BY MONTH(p.created_at)
+        ORDER BY MONTH(p.created_at)
+    </select>
+
+    <select id="selectYearlyMetrics" resultType="com.ssg9th2team.geharbang.domain.admin.dto.AdminPaymentMetricsRow">
+        SELECT
+            YEAR(p.created_at) AS period,
+            COALESCE(SUM(p.approved_amount), 0) AS totalAmount,
+            COUNT(*) AS totalCount
+        FROM payment p
+        WHERE p.created_at BETWEEN #{from} AND #{to}
+        <include refid="PaymentFilters" />
+        GROUP BY YEAR(p.created_at)
+        ORDER BY YEAR(p.created_at)
+    </select>
+</mapper>
