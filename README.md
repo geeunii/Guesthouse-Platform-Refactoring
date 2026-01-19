@@ -67,7 +67,7 @@
 ### 1. 관리자 서버 인프라 구축
 - **관리자 서버 격리:** VPC 환경의 **Private Subnet에 관리자 서버를 배치**하여 외부 직접 접근 차단 및 보안 강화
 - **서버 물리적 분리:** `User API Server`와 `Admin Server`를 분리 운영하여 사용자 트래픽 간섭 제거
-- **Air-gap 배포:** 외부 망이 차단된 Private 서버에 배포하기 위해 Public Server를 경유하는 파이프라인 구축
+- **보안 배포 파이프라인:** 외부 망이 차단된 Private 서버에 배포하기 위해 Public Server(Bastion)를 경유하는 파이프라인 구축
 
 ### 2. 🤖 AI 리포트 로직 구현 (Backend)
 - **Gemini API 연동:** `RestTemplate`을 활용한 프롬프트 엔지니어링 및 응답 처리
@@ -105,7 +105,7 @@
 
 ---
 
-### 2️⃣ 보안 강화를 위한 관리자 서버 분리 (Air-gap)
+### 2️⃣ 보안 강화를 위한 관리자 서버 분리 (Private Subnet)
 
 #### ❌ 문제 상황
 - 단일 서버 운영 시, 사용자 트래픽 폭주가 관리자 기능(정산/운영) 마비로 이어질 위험 존재.
@@ -113,7 +113,7 @@
 
 #### ✅ 해결 방법
 1. **서버 아키텍처 분리:** `User Server`(Public)와 `Admin Server`(Private)로 물리적 분리.
-2. **폐쇄망 배포 파이프라인 구축:** 외부 인터넷이 차단된 Private Subnet에 배포하기 위해, Public Server를 경유(SCP)하여 Docker 이미지를 전송하는 Air-gap 방식 적용.
+2. **폐쇄망 배포 파이프라인 구축:** 외부 인터넷이 차단된 Private Subnet에 배포하기 위해, Public Server를 경유(SCP)하여 Docker 이미지를 전송하는 방식 적용.
 3. **ACG(Firewall) 최적화:** 내부 VPC 대역(`10.0.X.X`)과 Nginx IP에서만 접근 가능하도록 Inbound 규칙 엄격 제어.
 
 ---
