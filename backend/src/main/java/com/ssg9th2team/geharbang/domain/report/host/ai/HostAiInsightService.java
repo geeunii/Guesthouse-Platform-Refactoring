@@ -602,7 +602,6 @@ public class HostAiInsightService {
 
     private enum Provider {
         RULE,
-        OPENAI, // Legacy support
         GEMINI, // New standard
         MOCK
     }
